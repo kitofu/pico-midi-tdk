@@ -1,6 +1,9 @@
 #include <stdio.h>
+#include <string.h>
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
+#include "hardware/uart.h"
+#include "hardware/gpio.h"
 #include "tusb.h"
 
 // ノート設定
@@ -15,8 +18,14 @@
 #define ADC_FALL_INPUT  1    // ADC1
 
 // ヒステリシスしきい値
-#define ON_THRESHOLD    600
+#define ON_THRESHOLD    550
 #define OFF_THRESHOLD   250
+
+// UART設定（Dueとの通信用）
+#define UART_ID         uart1
+#define UART_BAUD_RATE  115200
+#define UART_TX_PIN     4    // Pico GP4
+#define UART_RX_PIN     5    // Pico GP5
 
 int main(void)
 {
@@ -70,6 +79,6 @@ int main(void)
                 note_on = false;
             }
         }
-        // sleep_ms(1);
+        sleep_ms(1);
     }
 }
