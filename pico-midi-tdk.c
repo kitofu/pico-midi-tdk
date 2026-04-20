@@ -27,12 +27,55 @@
 #define UART_TX_PIN     4    // Pico GP4
 #define UART_RX_PIN     5    // Pico GP5
 
+static void uart_setup(void)
+{
+    uart_init(UART_ID, UART_BAUD_RATE);
+    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+}
+
+static void process_uart_handshake(void)
+{
+    static char rx_buf[64];
+    static int rx_idx = 0;
+
+    while (uart_is_readable(UART_ID))
+    {
+        char c = uart_getc(UART_ID);
+
+        if (c == '\r') {
+            continue;
+        }
+
+        if (c == '\n') {
+            rx_buf[rx_idx] = '\0';
+
+            if (strcmp(rx_buf, "HELLO") == 0) {
+                uart_puts(UART_ID, "OK\n");
+            } else {
+                uart_puts(UART_ID, "ERR\n");
+            }
+
+            rx_idx = 0;
+        } else {
+            if (rx_idx < (int)(sizeof(rx_buf) - 1)) {
+                rx_buf[rx_idx++] = c;
+            } else {
+                rx_idx = 0;  // バッファオーバーフロー時は破棄
+            }
+        }
+    }
+}
+
 int main(void)
 {
     // ADC初期化
     adc_init();
     adc_gpio_init(ADC_RISE_PIN);
     adc_gpio_init(ADC_FALL_PIN);
+
+    // UART初期化
+    uart_setup();
 
     // TinyUSB初期化
     tusb_init();
@@ -42,6 +85,9 @@ int main(void)
     while (true)
     {
         tud_task();
+
+        // Dueとのハンドシェイク処理
+        process_uart_handshake();
 
         // ADC26(GPIO26, ADC0) 読み取り
         adc_select_input(ADC_RISE_INPUT);
@@ -79,6 +125,7 @@ int main(void)
                 note_on = false;
             }
         }
+
         sleep_ms(1);
     }
 }

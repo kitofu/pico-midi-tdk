@@ -44,6 +44,7 @@ target_include_directories(pico-midi-tdk PRIVATE
 target_link_libraries(pico-midi-tdk
     pico_stdlib
     hardware_adc
+    hardware_uart
     hardware_i2c
     pico_unique_id
     tinyusb_device
