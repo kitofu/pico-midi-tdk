@@ -17,15 +17,17 @@
 #define ADC_RISE_INPUT  0    // ADC0
 #define ADC_FALL_INPUT  1    // ADC1
 
-// ヒステリシスしきい値
-#define ON_THRESHOLD    550
-#define OFF_THRESHOLD   250
-
 // UART設定（Dueとの通信用）
 #define UART_ID         uart1
 #define UART_BAUD_RATE  115200
 #define UART_TX_PIN     4    // Pico GP4
 #define UART_RX_PIN     5    // Pico GP5
+
+// しきい値（初期値）
+static int threshold_s1 = 150;
+static int threshold_s2 = 200;
+static int threshold_s3 = 550;
+static int threshold_s4 = 300;
 
 static void uart_setup(void)
 {
@@ -34,9 +36,9 @@ static void uart_setup(void)
     gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
 }
 
-static void process_uart_handshake(void)
+static void process_uart_message(void)
 {
-    static char rx_buf[64];
+    static char rx_buf[96];
     static int rx_idx = 0;
 
     while (uart_is_readable(UART_ID))
@@ -53,7 +55,19 @@ static void process_uart_handshake(void)
             if (strcmp(rx_buf, "HELLO") == 0) {
                 uart_puts(UART_ID, "OK\n");
             } else {
-                uart_puts(UART_ID, "ERR\n");
+                int s1, s2, s3, s4;
+                int matched = sscanf(rx_buf, "S1=%d,S2=%d,S3=%d,S4=%d",
+                                     &s1, &s2, &s3, &s4);
+
+                if (matched == 4) {
+                    threshold_s1 = s1;
+                    threshold_s2 = s2;
+                    threshold_s3 = s3;
+                    threshold_s4 = s4;
+                    uart_puts(UART_ID, "ACK\n");
+                } else {
+                    uart_puts(UART_ID, "ERR\n");
+                }
             }
 
             rx_idx = 0;
@@ -86,8 +100,8 @@ int main(void)
     {
         tud_task();
 
-        // Dueとのハンドシェイク処理
-        process_uart_handshake();
+        // Dueからのメッセージ受信
+        process_uart_message();
 
         // ADC26(GPIO26, ADC0) 読み取り
         adc_select_input(ADC_RISE_INPUT);
@@ -104,8 +118,8 @@ int main(void)
         {
             uint8_t packet[4];
 
-            // まだノートが鳴っていない時だけ Note On
-            if (!note_on && sensor_diff >= ON_THRESHOLD)
+            // S1 を Note On しきい値として使用
+            if (!note_on && sensor_diff >= threshold_s1)
             {
                 packet[0] = 0x09;
                 packet[1] = 0x90;
@@ -114,8 +128,8 @@ int main(void)
                 tud_midi_stream_write(0, packet, 4);
                 note_on = true;
             }
-            // すでにノートが鳴っている時だけ Note Off
-            else if (note_on && sensor_diff <= OFF_THRESHOLD)
+            // S2 を Note Off しきい値として使用
+            else if (note_on && sensor_diff <= threshold_s2)
             {
                 packet[0] = 0x08;
                 packet[1] = 0x80;
