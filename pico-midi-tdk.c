@@ -119,7 +119,7 @@ int main(void)
             uint8_t packet[4];
 
             // S1 を Note On しきい値として使用
-            if (!note_on && sensor_diff >= threshold_s1)
+            if (!note_on && sensor_diff >= threshold_s3)
             {
                 packet[0] = 0x09;
                 packet[1] = 0x90;
@@ -129,7 +129,7 @@ int main(void)
                 note_on = true;
             }
             // S2 を Note Off しきい値として使用
-            else if (note_on && sensor_diff <= threshold_s2)
+            else if (note_on && sensor_diff <= threshold_s1)
             {
                 packet[0] = 0x08;
                 packet[1] = 0x80;
@@ -140,6 +140,6 @@ int main(void)
             }
         }
 
-        sleep_ms(1);
+        // sleep_ms(1);
     }
 }
